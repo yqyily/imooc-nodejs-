@@ -2,9 +2,10 @@ var express = require('express');
 var path = require('path');
 var mongoose = require('mongoose');
 var Movie = require('./models/movie')
+var _ = require('underscore');
 var port = Number(process.env.PORT) || 7000;
 var app = express();
-// mongoose.connect('mongodb://localhost/imooc')
+mongoose.connect('mongodb://localhost/imooc')
 // 设置视图的根目录
 app.set('views', './views/pages');
 // 设置默认的模板引擎
@@ -18,51 +19,40 @@ console.log('imooc started on port ' + port);
 
 // index page
 app.get('/', function(req, res){
-	res.render('index',{
-		title:'imooc 首页',
-		movies:[{
-			title: '机械战警',
-			_id: 1,
-			poster: 'https://creditmanager.b0.upaiyun.com/724bb3efe4c954a835f74f06dec2d4be'
-		},{
-			title: '机械战警',
-			_id: 1,
-			poster: 'https://creditmanager.b0.upaiyun.com/724bb3efe4c954a835f74f06dec2d4be'
-		}]
-	});
+	Movie.fetch(function(err, movies){
+		if(err){
+			console.log(err);
+		}
+		res.render('index',{
+			title:'imooc ' + movie.title,
+			movies:movies
+		});
+
+	})
 })
 // list page
 app.get('/admin/list', function(req, res){
-	res.render('list',{
-		title:'imooc 列表页',
-		movies: [{
-			title: '机械战警',
-			_id: 1,
-			doctor: '',
-			country: '',
-			year: 2014,
-			poster: 'http://',
-			language: 'english',
-			flash: '',
-			summary: ''
-		}]
-	});
+	Movie.fetch(function(err, movies){
+		if(err){
+			console.log(err);
+		}
+		res.render('list',{
+			title:'imooc ' + movie.title,
+			movies:movies
+		});
+
+	})
 })
 // detail page
 app.get('/movie/:id', function(req, res){
-	res.render('detail',{
-		title:'imooc 详情页',
-		movie:{
-			doctor:'dddd ',
-			country:'dddd ',
-			title:'机械战警',
-			year: 2014,
-			poster: 'http:www',
-			language: 'english',
-			flash: '',
-			summary: ''
-		}
-	});
+	var id = req.params.id;
+	Movie.findById(id, function(err, movie){
+		res.render('detail',{
+			title:'imooc ' + movie.title,
+			movie: movie
+		});
+	})
+	
 })
 // admin page
 app.get('/admin/movie', function(req, res){
@@ -79,4 +69,42 @@ app.get('/admin/movie', function(req, res){
 			language: ''
 		}
 	});
+})
+//admin post movie
+app.post('/admin/movie/new', function(req, res){
+	var id = res.body.movie._id;
+	var movieObj = req.body.movie;
+	var _movie;
+	if(id !== 'undefined'){
+		Movie.findById(id, function(err, movie){
+			if(err){
+				console.log(err);
+			}
+			_movie = _.extend(movie, movieObj);
+			_movie.save(function(err, movie){
+				if(err){
+					console.log(err);
+				}
+				res.redirect('/movie' + movie._id)
+			})
+		})
+	}
+	else{
+		_movie = new Movie({
+			title: movieObj.title,
+			doctor: movieObj.doctor ,
+			country: movieObj.country,
+			year: movieObj.year,
+			poster: movieObj.poster,
+			flash: movieObj.flash,
+			summary: movieObj.summary,
+			language: movieObj.language
+		})
+		_movie.save(function(err, movie){
+			if(err){
+				console.log(err);
+			}
+			res.redirect('/movie' + movie._id)
+		})
+	}
 })
